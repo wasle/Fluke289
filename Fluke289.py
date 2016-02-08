@@ -1,4 +1,5 @@
 import serial
+from datetime import datetime
 
 class FlukeException(Exception):
     pass
@@ -55,5 +56,45 @@ class Fluke289:
 	
 	def value(self):
 		return self.queryPrimaryMeasurement()["value"]
+	
+	def queryDisplayedData(self):
+		response = self._command("QDDA").split(",")
+		data = {
+			"primaryFunction" : response[0],
+			"secondaryFunction" : response[1],
+			"rangeData" : { "autoRangeState": response[2],
+							"baseUnit": response[3],
+							"rangeNumber": int(response[4]),
+							"unitMultiplier": int(response[5]),
+				  },
+			"lightningBolt" : response[6], #Typecast to bool?
+			"minMaxStartTime" : float(response[7]),
+		}
+		i = 8
+		numberOfModes = int(response[i])
+		i+=1
+		data["modes"] = []
+		for x in range(numberOfModes):
+			data["modes"].append(response[i])
+			i+=1
+		
+		numberOfReadings = int(response[i])
+		i+=1
+		data["readings"] = dict()
+		for x in range(numberOfReadings):
+			data["readings"][response[i]] = {
+				"readingID":response[i],
+				"readingValue":float(response[i+1]),
+				"baseUnit":response[i+2],
+				"unitMultiplier":int(response[i+3]),
+				"decimalPlaces":int(response[i+4]),
+				"displayDigits":int(response[i+5]),
+				"readingState":response[i+6],
+				"readingAttribute":response[i+7],
+				"readingtimeStamp": datetime.fromtimestamp(float(response[i+8])),
+				#"value": float(response[i+1])*10**int(response[i+3])
+			}
+			i+=9
+		return data
 		
 
